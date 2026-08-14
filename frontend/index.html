@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Distributed Real-Time Collaborative Whiteboard</title>
+    <!-- Modern Google Fonts (Optional CDN) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=300">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header / Top Control Bar -->
+        <header class="top-bar">
+            <div class="brand">
+                <div class="logo-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                </div>
+                <div class="brand-text">
+                    <h1>CollabDraw</h1>
+                    <span class="subtitle">Distributed Whiteboard</span>
+                </div>
+            </div>
+
+            <div class="room-controls">
+                <div class="current-room-badge" id="currentRoomBadge">
+                    <span class="room-label">Room:</span>
+                    <span id="currentRoomCodeDisplay" class="room-code-val">LOBBY</span>
+                    <button id="copyRoomCodeBtn" class="btn btn-xs-icon" title="Copy Room Invite Link">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    </button>
+                </div>
+                <button id="leaveRoomBtn" class="btn btn-secondary" title="Switch or Create Room">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    <span>Lobby</span>
+                </button>
+                <button id="startGameBtn" class="btn btn-success btn-start-game hidden" title="Start Blind Chain Game (Host)">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    <span>Start Game</span>
+                </button>
+            </div>
+
+            <div class="right-controls">
+                <button id="aiDiagramBtn" class="btn btn-secondary btn-ai-diagram" title="AI Diagram Generator">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
+                    <span>AI Diagram</span>
+                </button>
+
+                <button id="voiceChatBtn" class="btn btn-icon btn-voice-toggle" title="Toggle Spatial Voice Chat (Mute/Unmute)">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+                </button>
+
+                <button id="editProfileBtn" class="btn btn-icon" title="Customize Display Name & Avatar">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </button>
+
+                <button id="chatToggleBtn" class="btn btn-icon btn-chat-toggle" title="Toggle Room Chat">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    <span id="unreadBadge" class="unread-badge hidden">0</span>
+                </button>
+
+                <!-- User Avatars Container -->
+                <div class="active-users" id="activeUsersContainer">
+                    <span class="users-label">Active Users:</span>
+                    <div class="avatar-stack" id="avatarStack"></div>
+                </div>
+
+                <!-- Connection Status -->
+                <div class="status-badge connecting" id="connectionBadge">
+                    <span class="status-dot"></span>
+                    <span id="statusText">Connecting...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Canvas Work Area -->
+        <main class="canvas-viewport">
+            <canvas id="whiteboardCanvas"></canvas>
+
+            <!-- Game HUD Bar Overlay -->
+            <div id="gameHudBar" class="game-hud-bar hidden">
+                <div class="hud-item prompt-banner">
+                    <span class="hud-label">Prompt:</span>
+                    <span id="gamePromptText" class="hud-value">An Astronaut Riding a Bicycle</span>
+                </div>
+                <div class="hud-item timer-banner">
+                    <span class="hud-label">Time:</span>
+                    <span id="gameTimerDisplay" class="hud-value timer-countdown">00:45</span>
+                </div>
+                <div class="hud-item turn-banner">
+                    <span class="hud-label">Turn:</span>
+                    <span id="gameTurnDisplay" class="hud-value">Player 1 of 4</span>
+                </div>
+                <button id="finishTurnBtn" class="btn btn-success finish-turn-btn">
+                    <span>Done My Turn</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </button>
+            </div>
+
+            <!-- Layer for Interactive Sticky Notes -->
+            <div id="stickyNotesContainer" class="sticky-notes-layer"></div>
+            
+            <!-- Layer for Remote User Mouse Cursors -->
+            <div id="cursorOverlay" class="cursor-overlay"></div>
+
+            <!-- Collapsible Live Text Chat Sidebar -->
+            <aside id="chatSidebar" class="chat-sidebar collapsed">
+                <div class="chat-header">
+                    <div class="chat-title">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        <span>Room Chat</span>
+                    </div>
+                    <button id="closeChatBtn" class="chat-close-btn" title="Close Chat">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                
+                <div id="chatMessages" class="chat-messages">
+                    <div class="chat-system-message">Welcome to room chat! Send a message or reaction to collaborate.</div>
+                </div>
+
+                <!-- Quick Emoji Reactions Bar -->
+                <div class="quick-emoji-bar" id="quickEmojiBar">
+                    <button type="button" class="emoji-chip" data-emoji="👍" title="Thumbs Up">👍</button>
+                    <button type="button" class="emoji-chip" data-emoji="❤️" title="Heart">❤️</button>
+                    <button type="button" class="emoji-chip" data-emoji="😂" title="Joy">😂</button>
+                    <button type="button" class="emoji-chip" data-emoji="🎉" title="Party">🎉</button>
+                    <button type="button" class="emoji-chip" data-emoji="🔥" title="Fire">🔥</button>
+                    <button type="button" class="emoji-chip" data-emoji="🎨" title="Art">🎨</button>
+                    <button type="button" class="emoji-chip" data-emoji="💡" title="Idea">💡</button>
+                    <button type="button" class="emoji-chip" data-emoji="🚀" title="Rocket">🚀</button>
+                    <button type="button" class="emoji-chip" data-emoji="👀" title="Eyes">👀</button>
+                    <button type="button" class="emoji-chip" data-emoji="✨" title="Sparkles">✨</button>
+                </div>
+
+                <form id="chatForm" class="chat-input-wrapper">
+                    <input type="text" id="chatInput" placeholder="Type a message..." autocomplete="off">
+                    <button type="button" id="emojiToggleBtn" class="chat-emoji-btn" title="Toggle Emoji Picker">😀</button>
+                    <button type="submit" class="chat-send-btn" title="Send Message">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    </button>
+                </form>
+
+                <!-- Expanded Emoji Picker Grid -->
+                <div id="emojiPickerGrid" class="emoji-picker-grid hidden">
+                    <span class="emoji-picker-item" data-emoji="👋">👋</span>
+                    <span class="emoji-picker-item" data-emoji="👍">👍</span>
+                    <span class="emoji-picker-item" data-emoji="🙌">🙌</span>
+                    <span class="emoji-picker-item" data-emoji="👏">👏</span>
+                    <span class="emoji-picker-item" data-emoji="❤️">❤️</span>
+                    <span class="emoji-picker-item" data-emoji="🔥">🔥</span>
+                    <span class="emoji-picker-item" data-emoji="🎉">🎉</span>
+                    <span class="emoji-picker-item" data-emoji="✨">✨</span>
+                    <span class="emoji-picker-item" data-emoji="😀">😀</span>
+                    <span class="emoji-picker-item" data-emoji="😂">😂</span>
+                    <span class="emoji-picker-item" data-emoji="😎">😎</span>
+                    <span class="emoji-picker-item" data-emoji="🥳">🥳</span>
+                    <span class="emoji-picker-item" data-emoji="🤔">🤔</span>
+                    <span class="emoji-picker-item" data-emoji="😍">😍</span>
+                    <span class="emoji-picker-item" data-emoji="🤩">🤩</span>
+                    <span class="emoji-picker-item" data-emoji="🤯">🤯</span>
+                    <span class="emoji-picker-item" data-emoji="🎨">🎨</span>
+                    <span class="emoji-picker-item" data-emoji="✏️">✏️</span>
+                    <span class="emoji-picker-item" data-emoji="💡">💡</span>
+                    <span class="emoji-picker-item" data-emoji="🚀">🚀</span>
+                    <span class="emoji-picker-item" data-emoji="👀">👀</span>
+                    <span class="emoji-picker-item" data-emoji="⭐">⭐</span>
+                    <span class="emoji-picker-item" data-emoji="🎯">🎯</span>
+                    <span class="emoji-picker-item" data-emoji="💯">💯</span>
+                </div>
+            </aside>
+
+            <!-- Floating Glassmorphic Toolbar -->
+            <div class="floating-toolbar">
+                <!-- Tool Selection Section -->
+                <div class="tool-section">
+                    <button class="tool-btn active" data-tool="pen" title="Freehand Pen (P)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                    </button>
+                    <button class="tool-btn" data-tool="line" title="Straight Line (L)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="19" x2="19" y2="5"/></svg>
+                    </button>
+                    <button class="tool-btn" data-tool="rect" title="Rectangle (R)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
+                    </button>
+                    <button class="tool-btn" data-tool="circle" title="Circle (C)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/></svg>
+                    </button>
+                    <button class="tool-btn" data-tool="sticky" title="Sticky Note (S)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3z"/><path d="M15 3v6h6"/></svg>
+                    </button>
+                    <button class="tool-btn" data-tool="eraser" title="Eraser (E)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H7L3 16C2.5 15.5 2.5 14.5 3 14L13 4C13.5 3.5 14.5 3.5 15 4L21 10C21.5 10.5 21.5 11.5 21 12L14 19"/><path d="M18 13L11 6"/></svg>
+                    </button>
+                </div>
+
+                <div class="divider"></div>
+
+                <!-- Canvas Background Pattern Selector -->
+                <div class="pattern-section">
+                    <select id="bgPatternSelect" class="bg-pattern-select" title="Canvas Background Pattern">
+                        <option value="grid">Grid Lines</option>
+                        <option value="dots">Dot Matrix</option>
+                        <option value="dark">Dark Solid</option>
+                        <option value="light">Light Mode</option>
+                    </select>
+                </div>
+
+                <div class="divider"></div>
+
+                <!-- Color Palette Section -->
+                <div class="color-section">
+                    <div class="color-presets">
+                        <div class="color-swatch active" data-color="#ffffff" style="background-color: #ffffff;"></div>
+                        <div class="color-swatch" data-color="#38bdf8" style="background-color: #38bdf8;"></div>
+                        <div class="color-swatch" data-color="#a855f7" style="background-color: #a855f7;"></div>
+                        <div class="color-swatch" data-color="#ec4899" style="background-color: #ec4899;"></div>
+                        <div class="color-swatch" data-color="#f43f5e" style="background-color: #f43f5e;"></div>
+                        <div class="color-swatch" data-color="#10b981" style="background-color: #10b981;"></div>
+                        <div class="color-swatch" data-color="#f59e0b" style="background-color: #f59e0b;"></div>
+                    </div>
+                    <label class="custom-color-wrapper" title="Custom Color Picker">
+                        <input type="color" id="customColorPicker" value="#ffffff">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 22s3-1 5-3l10-10a2.828 2.828 0 1 0-4-4L3 15c-2 2-3 5-3 5z"/><path d="M14 6l4 4"/></svg>
+                    </label>
+                </div>
+
+                <div class="divider"></div>
+
+                <!-- Brush Size Section -->
+                <div class="size-section">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" class="size-icon-small"><circle cx="12" cy="12" r="6"/></svg>
+                    <input type="range" id="sizeSlider" min="1" max="40" value="4" title="Stroke Width">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" class="size-icon-large"><circle cx="12" cy="12" r="10"/></svg>
+                    <span id="sizeValueDisplay" class="size-badge">4px</span>
+                </div>
+
+                <div class="divider"></div>
+
+                <!-- Actions Section -->
+                <div class="action-section">
+                    <button id="autoCleanBtn" class="action-btn" title="Toggle Auto-Clean Shapes (Snap rough drawings to perfect vectors)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.21 1.21 0 0 0 1.72 0L21.64 5.36a1.21 1.21 0 0 0 0-1.72z"/><path d="m14 7 3 3"/></svg>
+                    </button>
+                    <button id="undoBtn" class="action-btn" title="Undo Last Stroke (Ctrl+Z)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                    </button>
+                    <button id="clearBtn" class="action-btn danger" title="Clear Canvas">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+                    </button>
+                    <button id="exportBtn" class="action-btn success" title="Export as PNG Image">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </button>
+                    <button id="exportSvgBtn" class="action-btn success" title="Export as Vector SVG">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M10 13l-2 2 2 2"/><path d="M14 13l2 2-2 2"/></svg>
+                    </button>
+                    <button id="exportPdfBtn" class="action-btn success" title="Export as PDF Document">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M10 12h4"/><path d="M10 16h4"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Toast Notification Box -->
+            <div id="toast" class="toast hidden">
+                <span id="toastMessage">Notification</span>
+            </div>
+        </main>
+    </div>
+
+
+    <!-- User Presence Customization Modal -->
+    <div id="presenceModal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <button type="button" id="closePresenceModalBtn" class="modal-close-btn" title="Close">&times;</button>
+            <div class="modal-header">
+                <div class="modal-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </div>
+                <h2>Join Whiteboard Session</h2>
+                <p>Customize your display name and avatar badge color</p>
+            </div>
+            
+            <form id="presenceForm" class="modal-body">
+                <div class="avatar-preview-section">
+                    <div class="avatar-preview-circle" id="modalAvatarPreview">
+                        <span id="modalAvatarInitials">U</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="displayNameInput">Display Name</label>
+                    <input type="text" id="displayNameInput" placeholder="Enter your name..." maxlength="24" required autocomplete="off">
+                </div>
+
+                <div class="form-group">
+                    <label>Avatar Badge Color</label>
+                    <div class="avatar-color-picker" id="modalColorPicker">
+                        <div class="avatar-color-swatch active" data-color="#38bdf8" style="background-color: #38bdf8;"></div>
+                        <div class="avatar-color-swatch" data-color="#a855f7" style="background-color: #a855f7;"></div>
+                        <div class="avatar-color-swatch" data-color="#ec4899" style="background-color: #ec4899;"></div>
+                        <div class="avatar-color-swatch" data-color="#f43f5e" style="background-color: #f43f5e;"></div>
+                        <div class="avatar-color-swatch" data-color="#10b981" style="background-color: #10b981;"></div>
+                        <div class="avatar-color-swatch" data-color="#f59e0b" style="background-color: #f59e0b;"></div>
+                        <div class="avatar-color-swatch" data-color="#6366f1" style="background-color: #6366f1;"></div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary modal-submit-btn">
+                    <span>Enter Whiteboard</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- AI Prompt to Canvas Diagram Modal -->
+    <div id="aiDiagramModal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <button type="button" id="closeAiModalBtn" class="modal-close-btn" title="Close">&times;</button>
+            <div class="modal-header">
+                <div class="modal-icon ai-gradient">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
+                </div>
+                <h2>AI Diagram Generator</h2>
+                <p>Describe a diagram or select a quick template to generate onto the canvas</p>
+            </div>
+            
+            <form id="aiDiagramForm" class="modal-body">
+                <div class="form-group">
+                    <label for="aiPromptInput">Diagram Prompt</label>
+                    <input type="text" id="aiPromptInput" placeholder="e.g. Create a 3-node flowchart..." autocomplete="off">
+                </div>
+
+                <div class="form-group">
+                    <label>Quick Templates</label>
+                    <div class="template-chips">
+                        <button type="button" class="template-chip" data-template="flowchart">⚡ Flowchart</button>
+                        <button type="button" class="template-chip" data-template="mindmap">🧠 Mind Map</button>
+                        <button type="button" class="template-chip" data-template="architecture">🏢 Architecture</button>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary modal-submit-btn ai-gradient">
+                    <span>Generate Diagram</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3z"/></svg>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Dedicated Blind Chain Draw Game Arena Stage Modal -->
+    <div id="gameStageModal" class="modal-overlay hidden" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 99999; background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(16px); display: none; align-items: center; justify-content: center;">
+        <div class="modal-card arena-card">
+            <div class="arena-header">
+                <div class="arena-title">
+                    <span class="arena-badge">🎭 Blind Chain Draw</span>
+                    <span id="arenaPromptText" class="arena-prompt">Prompt: Loading...</span>
+                </div>
+                <div class="arena-status-bar">
+                    <div class="arena-timer" id="arenaTimerDisplay">⏱️ 00:45</div>
+                    <div class="arena-turn" id="arenaTurnDisplay">Player 1 of 4</div>
+                </div>
+                <button type="button" id="arenaFinishTurnBtn" class="btn btn-success finish-turn-btn">
+                    <span>Done My Turn</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                </button>
+            </div>
+
+            <div class="arena-canvas-container">
+                <canvas id="arenaCanvas"></canvas>
+            </div>
+
+            <div class="arena-toolbar">
+                <div class="tool-group">
+                    <button type="button" class="btn btn-icon arena-tool-btn active" data-tool="pen" title="Pen Tool">✏️</button>
+                    <button type="button" class="btn btn-icon arena-tool-btn" data-tool="line" title="Line Tool">📏</button>
+                    <button type="button" class="btn btn-icon arena-tool-btn" data-tool="rect" title="Rectangle Tool">⬛</button>
+                    <button type="button" class="btn btn-icon arena-tool-btn" data-tool="circle" title="Circle Tool">⭕</button>
+                    <button type="button" class="btn btn-icon arena-tool-btn" data-tool="eraser" title="Eraser Tool">🧹</button>
+                </div>
+                <div class="tool-group">
+                    <input type="color" id="arenaColorPicker" value="#38bdf8" class="arena-color-picker">
+                    <button type="button" id="arenaUndoBtn" class="btn btn-icon" title="Undo">↩️</button>
+                    <button type="button" id="arenaClearBtn" class="btn btn-icon" title="Clear My Layer">🗑️</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Final Reveal Phase Party Overlay -->
+    <div id="revealModal" class="modal-overlay hidden">
+        <div class="modal-card reveal-card">
+            <button type="button" id="closeRevealModalBtn" class="modal-close-btn" title="Close">&times;</button>
+            <div class="modal-header">
+                <div class="modal-icon party-gradient">🎉</div>
+                <h2>Masterpiece Revealed!</h2>
+                <p id="revealPromptText" class="reveal-prompt">Prompt: "An Astronaut Riding a Bicycle"</p>
+            </div>
+            
+            <div class="reveal-canvas-wrapper">
+                <canvas id="revealCanvas"></canvas>
+            </div>
+
+            <div id="revealContributors" class="reveal-contributors"></div>
+
+            <div class="reveal-actions-group" style="display: flex; gap: 12px; justify-content: center; width: 100%; margin-top: 12px;">
+                <button type="button" id="proceedToVotingBtn" class="btn btn-primary modal-submit-btn party-gradient" style="flex: 1;">
+                    <span>Proceed to Voting 🏆</span>
+                </button>
+                <button type="button" id="requestNextRoundRevealBtn" class="btn btn-primary modal-submit-btn party-gradient" style="flex: 1; display: none;">
+                    <span>📩 Request Host to Start Voting</span>
+                </button>
+                <button type="button" id="quitRevealBtn" class="btn btn-secondary" style="flex: 1; padding: 12px 18px; border-radius: 12px; font-weight: 600; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: #ffffff; cursor: pointer;">
+                    <span>Return to Lobby 🏰</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Category Voting Phase Modal Overlay -->
+    <div id="votingModal" class="modal-overlay hidden">
+        <div class="modal-card voting-card">
+            <div class="modal-header">
+                <div class="modal-icon gold-gradient">🏆</div>
+                <h2>Cast Your Category Votes!</h2>
+                <p id="votingTimerDisplay" class="voting-timer">⏱️ 00:15</p>
+                <span id="voteProgressText" class="vote-progress-badge">0 of 0 votes submitted...</span>
+            </div>
+            
+            <div class="voting-body">
+                <div class="voting-category-section">
+                    <div class="category-title">🎨 Most Creative / Best Drawing</div>
+                    <div id="bestCreativeGrid" class="voter-grid"></div>
+                </div>
+
+                <div class="voting-category-section">
+                    <div class="category-title">🤡 Most Chaotic / Hilarious Disaster</div>
+                    <div id="mostChaoticGrid" class="voter-grid"></div>
+                </div>
+
+                <button type="button" id="submitVotesBtn" class="btn btn-primary modal-submit-btn party-gradient" disabled>
+                    <span>Submit Votes 🗳️</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Victory & Award Ceremony Screen Overlay -->
+    <div id="ceremonyModal" class="modal-overlay hidden">
+        <canvas id="confettiCanvas"></canvas>
+        <div class="modal-card ceremony-card">
+            <button type="button" id="closeCeremonyBtn" class="modal-close-btn" title="Close">&times;</button>
+            <div class="modal-header">
+                <div class="modal-icon trophy-gradient">👑</div>
+                <h2>Victory & Award Ceremony!</h2>
+                <p id="ceremonyPromptText" class="ceremony-prompt">Prompt: "..."</p>
+            </div>
+
+            <div id="ceremonyWinnerCards" class="ceremony-winners-container"></div>
+
+            <div class="ceremony-canvas-wrapper">
+                <canvas id="ceremonyCanvas"></canvas>
+                <div id="ceremonyAwardBadges" class="ceremony-badges-overlay"></div>
+            </div>
+
+            <div class="ceremony-actions-group" style="display: flex; gap: 12px; justify-content: center; width: 100%; margin-top: 12px;">
+                <button type="button" id="ceremonyPlayAgainBtn" class="btn btn-primary modal-submit-btn party-gradient" style="flex: 1;">
+                    <span>Play Next Round 🔄</span>
+                </button>
+                <button type="button" id="requestNextRoundCeremonyBtn" class="btn btn-primary modal-submit-btn party-gradient" style="flex: 1; display: none;">
+                    <span>📩 Request Host for Next Round</span>
+                </button>
+                <button type="button" id="ceremonyQuitBtn" class="btn btn-secondary" style="flex: 1; padding: 12px 18px; border-radius: 12px; font-weight: 600; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: #ffffff; cursor: pointer;">
+                    <span>Return to Lobby 🏰</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enterprise Landing Page View Modal Overlay -->
+    <div id="landingModal" class="modal-overlay">
+        <div class="modal-card landing-card">
+            <div class="modal-header">
+                <div class="modal-icon logo-gradient">🎨</div>
+                <h2>CollabDraw Enterprise</h2>
+                <p class="subtitle">Distributed Real-Time Collaborative Whiteboard</p>
+            </div>
+            
+            <div class="landing-body">
+                <div class="form-group">
+                    <label for="landingNameInput">Your Display Name</label>
+                    <input type="text" id="landingNameInput" class="form-control" placeholder="Enter your display name..." maxlength="20">
+                </div>
+
+                <div class="form-group">
+                    <label>Avatar Badge Color</label>
+                    <div id="avatarColorPickerGrid" class="color-picker-grid">
+                        <button type="button" class="color-swatch selected" data-color="#38bdf8" style="background-color: #38bdf8;"></button>
+                        <button type="button" class="color-swatch" data-color="#a855f7" style="background-color: #a855f7;"></button>
+                        <button type="button" class="color-swatch" data-color="#ec4899" style="background-color: #ec4899;"></button>
+                        <button type="button" class="color-swatch" data-color="#f43f5e" style="background-color: #f43f5e;"></button>
+                        <button type="button" class="color-swatch" data-color="#10b981" style="background-color: #10b981;"></button>
+                        <button type="button" class="color-swatch" data-color="#f59e0b" style="background-color: #f59e0b;"></button>
+                        <button type="button" class="color-swatch" data-color="#6366f1" style="background-color: #6366f1;"></button>
+                    </div>
+                </div>
+
+                <div class="landing-actions-group">
+                    <button type="button" id="createRoomLandingBtn" class="btn btn-primary modal-submit-btn party-gradient">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                        <span>✨ Create Room (e.g. WORK01)</span>
+                    </button>
+                    <div class="divider"><span>OR JOIN ROOM VIA CODE</span></div>
+                    <div class="join-input-group">
+                        <input type="text" id="joinRoomCodeLandingInput" class="form-control text-uppercase" placeholder="Enter 6-char code (e.g. WORK01)" maxlength="6">
+                        <button type="button" id="joinRoomLandingBtn" class="btn btn-secondary">
+                            <span>Join Room</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Session In Progress Alert Modal -->
+    <div id="sessionInProgressModal" class="modal-overlay hidden" style="display: none;">
+        <div class="modal-card" style="max-width: 440px; text-align: center; padding: 28px;">
+            <div class="modal-header" style="justify-content: center; align-items: center; flex-direction: column;">
+                <div class="modal-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); font-size: 24px; width: 54px; height: 54px; border-radius: 16px; margin-bottom: 12px;">🔒</div>
+                <h2 style="font-size: 22px; font-weight: 700; color: #f8fafc;">Session In Progress</h2>
+                <div style="margin-top: 6px; font-size: 13px; color: #94a3b8;">
+                    Room Code: <strong id="inProgressRoomCodeDisplay" style="color: #38bdf8; font-family: monospace; font-size: 15px;">-</strong>
+                </div>
+            </div>
+            <div style="margin: 20px 0; color: #cbd5e1; font-size: 14px; line-height: 1.6; background: rgba(30, 41, 59, 0.5); padding: 14px 18px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.08);">
+                The room host has already launched this whiteboard session. New participants cannot join an active session after it has started.
+            </div>
+            <div class="modal-actions" style="margin-top: 20px;">
+                <button type="button" id="inProgressBackBtn" class="btn btn-primary modal-submit-btn party-gradient" style="width: 100%; justify-content: center; padding: 12px;">
+                    <span>👈 Return to Home Page</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enterprise Room Lobby View Modal Overlay -->
+    <div id="lobbyModal" class="modal-overlay hidden">
+        <div class="modal-card lobby-card">
+            <div class="modal-header">
+                <div class="modal-icon gold-gradient">🏰</div>
+                <h2>Room Lobby</h2>
+                <div class="lobby-room-code-banner">
+                    <span class="code-label">ROOM CODE:</span>
+                    <span id="lobbyRoomCodeDisplay" class="code-value">WORK01</span>
+                    <button type="button" id="copyLobbyInviteBtn" class="btn btn-xs-icon" title="Copy Invite Link">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="lobby-body">
+                <div class="lobby-section">
+                    <div class="section-title">👥 Participant Roster (<span id="lobbyPlayerCount">1</span>)</div>
+                    <div id="lobbyPlayersGrid" class="lobby-players-grid"></div>
+                </div>
+
+                <!-- Host Control Panel -->
+                <div id="hostControlPanel" class="host-control-panel">
+                    <div class="panel-header">👑 Host Controls</div>
+                    
+                    <div class="host-setting-item">
+                        <label>🔒 Drawing Permissions:</label>
+                        <button type="button" id="lockDrawingToggleBtn" class="btn btn-secondary btn-sm-pill">
+                            <span id="lockDrawingIcon">🔓</span>
+                            <span id="lockDrawingText">Unlocked (All Can Edit)</span>
+                        </button>
+                    </div>
+
+                    <div class="host-setting-item">
+                        <label>🎨 Session Mode:</label>
+                        <div class="setting-pill-selector" id="roomModePillSelector">
+                            <button type="button" class="pill-option active" data-mode="whiteboard">Collaborative Canvas</button>
+                            <button type="button" class="pill-option" data-mode="game">Party Game</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Participant Waiting Banner -->
+                <div id="participantWaitingBanner" class="participant-waiting-banner" style="display: none;">
+                    <div class="waiting-spinner">⏳</div>
+                    <span>Waiting for Room Host to launch session...</span>
+                </div>
+
+                <div class="lobby-actions-group">
+                    <button type="button" id="launchSessionBtn" class="btn btn-primary modal-submit-btn party-gradient">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        <span>🚀 Launch Session</span>
+                    </button>
+                    <button type="button" id="leaveLobbyBtn" class="btn btn-secondary" style="margin-top: 8px;">
+                        <span>Leave Room</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- jsPDF Library for Multi-Page PDF Exports -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Application Script -->
+    <script src="app.js?v=300"></script>
+</body>
+</html>
