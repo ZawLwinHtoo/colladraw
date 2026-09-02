@@ -1,0 +1,45 @@
+[hidden] {
+  display: none !important;
+}
+
+.room-help {
+  margin: -0.35rem 0 0.8rem;
+  color: #64748b;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+.toolbar rect,
+.toolbar ellipse {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+}
+.toolbar [data-tool="sticky"]::after {
+  content: "";
+  width: 14px;
+  height: 14px;
+  border: 1.8px solid currentColor;
+  border-radius: 2px;
+  box-shadow: 4px 4px 0 -2px currentColor;
+}
+.toolbar [data-tool="rectangle"]::after {
+  content: "";
+  width: 15px;
+  height: 12px;
+  border: 1.8px solid currentColor;
+  border-radius: 2px;
+}
+.toolbar [data-tool="ellipse"]::after {
+  content: "";
+  width: 15px;
+  height: 11px;
+  border: 1.8px solid currentColor;
+  border-radius: 50%;
+}
+.avatars::after {
+  content: attr(data-count);
+  margin-left: 6px;
+  color: #728099;
+  font-size: 12px;
+  font-weight: 700;
+}

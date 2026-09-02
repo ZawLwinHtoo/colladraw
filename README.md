@@ -1,177 +1,133 @@
-# CollabDraw 🎨
+# CollabDraw
 
-> **Distributed Real-Time Whiteboard & Blind Chain Draw Party Game**  
-> Built with **FastAPI + Redis Pub/Sub**, **Nginx API Gateway**, **HTML5 Canvas**, and modern **Vanilla JavaScript**.
+CollabDraw is a real-time, distributed collaborative whiteboard built for a fourth-year Distributed Programming course. It is intentionally feature-rich enough for a semester team project while keeping the architecture small enough to explain.
 
-![Python](https://img.shields.io/badge/Python-3.9+-blue.svg) 
-![FastAPI](https://img.shields.io/badge/FastAPI-WebSockets-green.svg) 
-![Redis](https://img.shields.io/badge/Redis-Pub%2FSub-red.svg) 
-![Nginx](https://img.shields.io/badge/Nginx-API%20Gateway-green.svg) 
-![License](https://img.shields.io/badge/License-MIT-purple.svg)
-
----
-
-## ✨ Features Overview
-
-### 🏰 Enterprise User Onboarding & Room Lobby Flow
-- **Display Name & Avatar Badge Color**: Customize identity upon entry with responsive color swatches and auto-initial avatar previews.
-- **Random 6-Character Room Codes**: Click **Create Room** to generate clean, memorable 6-character room keys (e.g. `WORK01`, `GAME42`) or enter a code to join.
-- **Participant Roles & Host Controls**: Roles tracked dynamically in Redis (`Host`, `Editor`, `Viewer`).
-  - **Lock/Unlock Drawing Permissions**: Toggle view-only vs. interactive edit modes across all connected participants.
-  - **Session Mode Selector**: Toggle between **Collaborative Canvas** and **Blind Chain Draw Party Game**.
-  - **Synchronized Session Launch**: Host clicks **🚀 Launch Session** to simultaneously transition all connected lobby clients to the session view.
-- **Session-in-Progress Late-Join Protection**: Prevents late joiners from disrupting active sessions while displaying a clean **🔒 Session In Progress** alert card.
-
----
-
-### 🎨 Multi-Tool Whiteboard Canvas Engine
-- **Full Drawing Toolset**: Freehand Pen, Straight Line, Perfect Rectangle, Elliptical Circle, Variable Eraser, and Resizable Sticky Notes.
-- **Real-Time Remote Cursor Overlay**: ~30 FPS throttled cursor position streaming displaying peer display names and avatar colors.
-- **AI Shape Snapping**: Automatically cleans hand-drawn rough shapes into vector geometries upon stroke release.
-- **Multi-Format Export**:
-  - **PNG Image Export**
-  - **Vector SVG Export**
-  - **Multi-Page High-DPI PDF Export** (via `jsPDF`)
-- **HiDPI Retina Canvas Engine**: Scaled dynamic canvas matrix matching physical screen pixel ratios without stroke distortion or positioning drift.
-
----
-
-### 🎮 Blind Chain Draw Party Game Mode
-- **Layer-Based Blind Chain Drawing**: Each participant draws their layer without seeing other active layers, building a collaborative mystery artwork.
-- **Masterpiece Reveal & Award Ceremony**:
-  - Combined sharp layer reveal with high-resolution particle confetti physics.
-  - **Category Voting**: Anonymous voting for *Most Creative / Best Drawing* and *Most Chaotic / Hilarious Disaster*.
-  - **Strict Host Controls & Participant Requests**:
-    - **Host**: Exclusive authority to proceed to voting and trigger the next game round.
-    - **Participants**: Interactive **`📩 Request Host to Start Voting`** and **`📩 Request Host for Next Round`** buttons that send real-time notification alerts and glowing button badges to the Host.
-  - **Lobby Re-Routing**: Returning from game screens automatically re-routes participants and host back to the **Room Lobby**, preserving host status and participant rosters.
-
----
-
-## 🏛️ Horizontally Scalable Architecture
+## Architecture
 
 ```text
-                       ┌─────────────────────────┐
-                       │   Client Browser Tabs   │
-                       └────────────┬────────────┘
-                                    │ HTTP / WebSockets (Port 80)
-                       ┌────────────▼────────────┐
-                       │    Nginx API Gateway    │
-                       │   (ip_hash Load Balancer)│
-                       └──────┬────────────┬─────┘
-                              │            │
-               ┌──────────────▼───┐    ┌───▼──────────────┐
-               │ FastAPI Backend  │    │ FastAPI Backend  │
-               │   Node 1 (8000)  │    │   Node 2 (8001)  │
-               └──────┬───────────┘    └───┬──────────────┘
-                      │                    │
-                      └─────────┬──────────┘
-                                │ Redis Pub/Sub & Shared Cache
-                       ┌────────▼────────┐
-                       │   Redis Server  │
-                       │   (Port 6379)   │
-                       └─────────────────┘
+Browser
+  ↓
+Nginx
+ ↙   ↘
+FastAPI node 1   FastAPI node 2
+        ↘       ↙
+          Redis
 ```
 
----
+Nginx balances WebSocket connections. Redis provides the shared room board, presence and game state; Redis Pub/Sub forwards accepted live events between backend nodes.
 
-## 📁 Repository Structure
+## Requirements
 
-```text
-distributed-whiteboard/
-├── backend/
-│   ├── __init__.py
-│   ├── server.py              # FastAPI server, WebSocket ConnectionManager & Redis Pub/Sub
-│   ├── redis_broker.py        # Fallback embedded Python Redis Broker
-│   ├── requirements.txt        # Backend dependencies
-│   └── Dockerfile             # Container definition for backend nodes
-├── frontend/
-│   ├── index.html             # UI views (Landing, Lobby, Canvas, Party Game Overlays)
-│   ├── style.css              # Glassmorphic UI token design system & CSS variables
-│   └── app.js                 # HiDPI canvas rendering engine & WebSocket client state
-├── nginx/
-│   ├── nginx.conf             # Nginx reverse proxy, ip_hash & WebSocket upgrade headers
-│   └── start_nginx.ps1        # Helper PowerShell script for Nginx launch
-├── docker-compose.yml         # One-command multi-node Docker deployment
-├── PROJECT_DOCUMENTATION.md   # Full architecture & WebSocket API specifications
-├── README.md                  # Project overview & quickstart guide
-└── LICENSE                    # MIT License
-```
+- Docker Desktop (with its engine running) or Docker Engine
+- Docker Compose
+- A current desktop browser such as Chrome, Edge, Firefox or Safari
 
----
+No environment file, local Python installation, local Redis installation, or manual Nginx setup is required for the Docker workflow.
 
-## 🚀 Quickstart Guide
+## Installation
 
-### Option 1: One-Command Deployment with Docker Compose (Recommended)
-
-Ensure Docker and Docker Compose are installed, then run:
-
-```bash
-docker compose up --build
-```
-
-Access the application unified gateway at **[http://localhost](http://localhost)**.
-
----
-
-### Option 2: Manual Local Setup
-
-#### Step 1: Clone Repository & Setup Virtual Environment
-```bash
-git clone https://github.com/your-username/distributed-whiteboard.git
-cd distributed-whiteboard
-python -m venv .venv
-# On Windows:
-.venv\Scripts\activate
-# On Linux/macOS:
-source .venv/bin/activate
-```
-
-#### Step 2: Install Dependencies
-```bash
-pip install -r requirements.txt
-```
-
-#### Step 3: Run Backend Server Node 1
-```bash
-python -m uvicorn backend.server:app --port 8000 --host 127.0.0.1
-```
-*(Node 1 automatically launches an embedded Redis Broker if an external Redis server is not running).*
-
-#### Step 4: Run Backend Server Node 2 (Optional Multi-Node Test)
-In a separate terminal window:
-```bash
-python -m uvicorn backend.server:app --port 8001 --host 127.0.0.1
-```
-
-#### Step 5: Launch Nginx API Gateway Proxy
-In a third terminal window:
 ```powershell
-.\nginx\start_nginx.ps1
-```
-Or directly via Nginx CLI:
-```bash
-nginx -c "%CD%\nginx\nginx.conf"
+git clone https://github.com/ZawLwinHtoo/distributed-whiteboard.git
+cd distributed-whiteboard
+docker compose up -d --build
 ```
 
-Open **[http://localhost](http://localhost)** in your browser!
+Open [http://localhost:8090](http://localhost:8090). The health checks start Nginx only after Redis and both FastAPI nodes are ready.
 
----
+## Stopping and resetting
 
-## ⌨️ Keyboard Shortcuts
+```powershell
+docker compose down
+```
 
-| Shortcut | Tool / Action |
-| --- | --- |
-| `P` | Pen Tool |
-| `L` | Straight Line Tool |
-| `R` | Rectangle Tool |
-| `C` | Circle Tool |
-| `S` | Sticky Note Tool |
-| `E` | Eraser Tool |
-| `Ctrl + Z` | Undo Last Action |
+To remove all Redis room data used during development or testing:
 
----
+```powershell
+docker compose down -v
+```
 
-## 📄 License
+`-v` deletes the local Redis container data; it does not delete source code.
 
-Distributed under the **MIT License**. See `LICENSE` for details.
+## Local development without Docker
+
+For a one-node development run, install the Python requirements and start FastAPI directly. The distributed demonstration still requires Docker Compose.
+
+The first page presents two equal choices:
+
+- **Create a Room**: enter a name, optionally enter a code, then choose Whiteboard or Draw & Guess. A blank code generates a readable code.
+- **Join a Room**: enter a name and an existing code. There is intentionally no mode selector; the server detects the room type.
+
+Room IDs are normalized to uppercase letters, numbers and simple hyphens. Creating an existing code is rejected; joining a missing code returns **Room not found**. An invite link such as `http://localhost:8090/?room=BLUE-MANGO` opens the Join screen with the code filled in.
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python -m uvicorn backend.server:app --reload --port 8000
+```
+
+Redis is optional for a one-node local run, but required for the distributed demonstration.
+
+## What it can do
+
+- Create or join human-readable rooms and share an invite link.
+- Draw with pen, translucent highlighter, line, arrow, double arrow, connector, rectangle, ellipse, triangle and diamond tools.
+- Add editable text and sticky notes; select, move, resize suitable objects, change layer order, duplicate, delete and erase your own objects.
+- Use a local-only grid while live cursors show real-time collaborator awareness.
+- Pan, zoom, export PNG, export/import JSON, clear the shared board, and undo/redo your own actions.
+- Show participants, live labelled cursors, join/leave toasts, and connection status.
+- Restore the complete object board when a user joins or reconnects.
+- Create a server-authoritative Draw & Guess game room with lobby, host controls, private word choices, turn rotation, guessing, scoring and a final ranking.
+
+Text and sticky notes use a focused inline editor over the canvas. A new item is not synchronized until its editor is committed by clicking away, pressing Enter for text, or pressing Ctrl+Enter for a sticky note. Double-clicking an existing item edits its existing object ID. This avoids sending one WebSocket message for every keystroke.
+
+The selection toolbar exposes duplicate, forward/backward and front/back layer actions without crowding the main toolbar. `Ctrl+C`, `Ctrl+V` and `Ctrl+D` use an internal CollabDraw clipboard and create a new object with a small offset. `G` toggles the visual grid; `H` selects highlighter; `B` selects double arrow; `C` selects connector. Image insertion was intentionally deferred: sending arbitrary image blobs through the shared Redis board hash would create avoidable payload and persistence problems for this course-sized project.
+
+## Draw & Guess demo
+
+Choose **Draw & Guess Game** only when creating a room. Joining needs just a name and room code: the server reads the room’s stored Redis metadata, so a room code can never split into a game and a whiteboard. Atomic Redis `SET NX` creation means two backend nodes cannot create different modes for the same code. The first player is the host. Invite two or more players, set 1–5 round cycles and a 30/45/60/90-second timer, then start. The current drawer privately receives three server-selected choices; everyone else sees only a masked word and can submit guesses in the right-hand panel.
+
+The server, not the browser, validates the drawer, selected word, guesses, timer cutoff and score. A correct guess earns `max(100, round(500 × remainingSeconds / roundDuration))`; the drawer earns 50 points for each correct guess. Joining after the game begins is spectator-only until the next game.
+
+## Distributed demo
+
+The Compose setup launches `backend-1`, `backend-2`, Redis and Nginx. Nginx distributes new WebSocket connections across both backend nodes. To prove it during a presentation:
+
+```powershell
+docker compose logs -f backend-1 backend-2
+```
+
+Join a room from two separate browser windows. The logs identify the node that accepted each client. Draw in one window; the other receives the change through Redis Pub/Sub even if it is attached to the other node.
+
+To simulate one node failing:
+
+```powershell
+docker compose restart backend-1
+```
+
+Clients reconnect automatically and receive the authoritative Redis board state. The other node continues serving clients. Nginx re-resolves Docker service names, so a recreated backend receives a new container IP without leaving the proxy on a stale address.
+
+## Project layout
+
+```text
+backend/server.py       FastAPI WebSocket server, shared board and presence logic
+backend/game.py         Redis-backed Draw & Guess state machine and word list
+frontend/index.html     Application structure and controls
+frontend/app.js         Canvas editor, client state and WebSocket client
+frontend/style.css      Responsive CollabDraw visual system
+nginx/nginx.conf        Static frontend and WebSocket reverse proxy
+docker-compose.yml      Two nodes + Redis + Nginx
+```
+
+See [PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md) for the protocol, architecture, limitations and presentation notes.
+
+## Known limitations
+
+- The collaborative editor is eventually consistent; simultaneous edits of the same object use last-write-wins rather than CRDT/OT conflict resolution.
+- Rooms are stored in Redis with a TTL and are not permanent database records.
+- There are no user accounts, authentication, offline editing, image uploads or mobile-first touch optimisation.
+- A drawer disconnect during an active Draw & Guess round skips that turn to keep the game progressing.
+
+## Academic purpose
+
+CollabDraw is a fourth-year university Distributed Programming project. It intentionally prioritises observable WebSocket, Redis, Pub/Sub, load-balancing and recovery concepts over production-SaaS complexity.

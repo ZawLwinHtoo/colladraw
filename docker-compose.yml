@@ -1,48 +1,37 @@
-version: '3.8'
-
 services:
   redis:
     image: redis:7-alpine
-    container_name: collabdraw_redis
-    ports:
-      - "6379:6379"
-
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
   backend-1:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
-    container_name: collabdraw_node1
-    environment:
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - NODE_ID=node-1
-    ports:
-      - "8000:8000"
+    build: {context: ., dockerfile: backend/Dockerfile}
+    environment: [REDIS_HOST=redis, NODE_ID=node-1]
     depends_on:
-      - redis
-
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 3s
+      timeout: 3s
+      retries: 10
   backend-2:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
-    container_name: collabdraw_node2
-    environment:
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - NODE_ID=node-2
-    ports:
-      - "8001:8001"
+    build: {context: ., dockerfile: backend/Dockerfile}
+    environment: [REDIS_HOST=redis, NODE_ID=node-2]
     depends_on:
-      - redis
-
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 3s
+      timeout: 3s
+      retries: 10
   nginx:
     image: nginx:alpine
-    container_name: collabdraw_gateway
-    ports:
-      - "80:80"
+    ports: ["8090:80"]
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./frontend:/usr/share/nginx/html:ro
     depends_on:
-      - backend-1
-      - backend-2
+      backend-1: {condition: service_healthy}
+      backend-2: {condition: service_healthy}
