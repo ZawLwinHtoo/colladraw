@@ -27,8 +27,8 @@ No environment file, local Python installation, local Redis installation, or man
 ## Installation
 
 ```powershell
-git clone https://github.com/ZawLwinHtoo/distributed-whiteboard.git
-cd distributed-whiteboard
+git clone https://github.com/ZawLwinHtoo/colladraw.git
+cd colladraw
 docker compose up -d --build
 ```
 
@@ -120,6 +120,15 @@ docker-compose.yml      Two nodes + Redis + Nginx
 ```
 
 See [PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md) for the protocol, architecture, limitations and presentation notes.
+
+## Regression checks
+
+```sh
+python -m pip install -r requirements-dev.txt
+python -m pytest -q
+```
+
+These checks exercise real WebSocket room creation, board replay, object ownership, malformed messages, invalid coordinates, host controls, private word selection, and game scoring in isolated one-node mode. The two-node presentation still needs the Redis/Docker setup above.
 
 ## Known limitations
 

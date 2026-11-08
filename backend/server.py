@@ -2,6 +2,7 @@
 import asyncio
 import json
 import logging
+import math
 import os
 import re
 import time
@@ -234,11 +235,20 @@ def valid_object(raw: Any, user_id: str) -> dict[str, Any] | None:
     clean["id"] = object_id
     clean["userId"] = user_id
     clean["updatedAt"] = int(time.time() * 1000)
+    def coordinate(value: Any) -> bool:
+        return type(value) in (int, float) and math.isfinite(value) and abs(value) <= 10_000_000
     if clean["type"] in {"pen", "highlighter"}:
         points = clean.get("points")
         if not isinstance(points, list) or not 1 <= len(points) <= 700:
             return None
-    elif not all(isinstance(clean.get(key), (int, float)) for key in ("x", "y", "w", "h")):
+        if not all(isinstance(point, dict) and coordinate(point.get("x")) and coordinate(point.get("y")) for point in points):
+            return None
+        clean["points"] = [{"x": point["x"], "y": point["y"]} for point in points]
+    elif not all(coordinate(clean.get(key)) for key in ("x", "y", "w", "h")):
+        return None
+    if "style" in clean and not isinstance(clean["style"], dict):
+        return None
+    if "z" in clean and not coordinate(clean["z"]):
         return None
     if isinstance(clean.get("text"), str):
         clean["text"] = clean["text"][:240]
@@ -489,7 +499,12 @@ async def board_socket(websocket: WebSocket, room: str, name: str = "Guest", cli
     logger.info("%s accepted %s in room %s", NODE_ID, client_id, room)
     try:
         while True:
-            message = await websocket.receive_json()
+            try:
+                message = await websocket.receive_json()
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                continue
+            if not isinstance(message, dict):
+                continue
             kind = message.get("type")
             if config["mode"] == "game" and isinstance(kind, str) and kind.startswith("game:"):
                 game_state, reset = await game_transition(room, client_id, message)
@@ -501,7 +516,7 @@ async def board_socket(websocket: WebSocket, room: str, name: str = "Guest", cli
                 continue
             if kind == "cursor":
                 x, y = message.get("x"), message.get("y")
-                if isinstance(x, (int, float)) and isinstance(y, (int, float)):
+                if type(x) in (int, float) and type(y) in (int, float) and math.isfinite(x) and math.isfinite(y):
                     await manager.publish(room, {"type": "cursor", "clientId": client_id, "name": name, "color": color, "x": x, "y": y})
                 continue
             if kind != "operation" or not ID_RE.fullmatch(str(message.get("operationId", ""))):
@@ -511,6 +526,8 @@ async def board_socket(websocket: WebSocket, room: str, name: str = "Guest", cli
                 continue
             event_type = message.get("eventType")
             payload = message.get("payload", {})
+            if not isinstance(payload, dict):
+                continue
             event = {"type": "operation", "operationId": operation_id, "eventType": event_type,
                      "roomId": room, "userId": client_id, "timestamp": int(time.time() * 1000), "payload": payload}
             namespace = "board"
