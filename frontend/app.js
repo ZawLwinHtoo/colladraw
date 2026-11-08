@@ -1,4 +1,5 @@
 (() => {
+  const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[c]));
   const $ = (id) => document.getElementById(id);
   const canvas = $("canvas"),
     ctx = canvas.getContext("2d"),
@@ -592,7 +593,7 @@
     players.innerHTML = "";
     roster.slice().sort((a, b) => (game.scores?.[b.id] || 0) - (game.scores?.[a.id] || 0)).forEach((p) => {
       const row = document.createElement("div"); row.className = "game-player";
-      row.innerHTML = `<span class="mini-avatar" style="background:${p.color || colours[0]}">${p.name.slice(0,2).toUpperCase()}</span><span>${p.name}${p.id === game.drawerId ? " ✎" : ""}${game.guessedIds?.includes(p.id) ? " ✓" : ""}</span><b>${game.scores?.[p.id] || 0}</b>`;
+      row.innerHTML = `<span class="mini-avatar" style="background:${p.color || colours[0]}">${escapeHtml(p.name.slice(0,2).toUpperCase())}</span><span>${escapeHtml(p.name)}${p.id === game.drawerId ? " ✎" : ""}${game.guessedIds?.includes(p.id) ? " ✓" : ""}</span><b>${game.scores?.[p.id] || 0}</b>`;
       players.append(row);
     });
     const chat = $("guessChat"); chat.innerHTML = "";
@@ -600,7 +601,7 @@
     chat.scrollTop = chat.scrollHeight;
     const results = $("gameResults"); results.hidden = !["round_results", "game_results"].includes(game.status);
     $("playAgainBtn").hidden = game.status !== "game_results" || game.hostId !== state.clientId;
-    $("gameResultList").innerHTML = (game.results || []).map((r) => { const p = game.players?.find((x) => x.id === r.id); return `<div>${p?.name || "Player"} <b>+${r.points}</b></div>`; }).join("");
+    $("gameResultList").innerHTML = (game.results || []).map((r) => { const p = game.players?.find((x) => x.id === r.id); return `<div>${escapeHtml(p?.name || "Player")} <b>+${r.points}</b></div>`; }).join("");
     const spectator = Boolean(game.turnOrder) && !(game.players || []).some((p) => p.id === state.clientId);
     const canGuess = ["drawing"].includes(game.status) && !meDrawer && !spectator && !game.guessedIds?.includes(state.clientId) && Date.now() >= state.guessCooldownUntil;
     $("guessInput").disabled = !canGuess;

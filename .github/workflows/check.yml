@@ -14,3 +14,18 @@ jobs:
       - run: pip install -r requirements-dev.txt
       - run: python -m pytest -q
       - run: docker compose config --quiet
+  cluster:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: pip install websockets
+      - run: docker compose up --build --wait --wait-timeout 120
+      - run: python tests/check_cluster.py
+      - if: failure()
+        run: docker compose logs --tail 120
+      - if: always()
+        run: docker compose down --volumes
